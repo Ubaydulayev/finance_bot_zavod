@@ -1,0 +1,9 @@
+.env
+credentials.json
+__pycache__/
+*.pyc
+.vercel
+
+# старая polling-версия бота с захардкоженными токеном/ID —
+# оставлена локально для справки, в репозиторий не идёт
+finance_bot.py
