@@ -1,11 +1,14 @@
 from flask import Flask, jsonify, request
 
 from lib.config import CRON_SECRET, TELEGRAM_CHAT_ID
+from lib.menu import MAIN_KEYBOARD, WELCOME_TEXT
 from lib.rates import calculate_cross_rates, format_message, get_exchange_rates
 from lib.sheets import handle_expense_message
 from lib.telegram import send_message
 
 app = Flask(__name__)
+
+GREETING_TRIGGERS = {"/start", "/help", "помощь"}
 
 
 @app.route("/api/webhook", methods=["POST"])
@@ -17,7 +20,11 @@ def webhook():
         return jsonify(ok=True)
 
     chat_id = message["chat"]["id"]
-    text = message["text"]
+    text = message["text"].strip()
+
+    if text.lower() in GREETING_TRIGGERS:
+        send_message(WELCOME_TEXT, chat_id=chat_id, reply_markup=MAIN_KEYBOARD)
+        return jsonify(ok=True)
 
     reply = handle_expense_message(text)
     send_message(reply, chat_id=chat_id)

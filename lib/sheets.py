@@ -5,6 +5,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 from .config import GOOGLE_CREDENTIALS_JSON, SPREADSHEET_ID, WS_BUSINESS, WS_EXPENSES, WS_SALARY
+from .menu import HELP_TEXT, TYPE_TEMPLATES
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
@@ -26,6 +27,27 @@ def get_worksheet(title: str):
     if title not in _worksheets:
         _worksheets[title] = get_spreadsheet().worksheet(title)
     return _worksheets[title]
+
+
+def parse_quick_amount(text: str):
+    """
+    Быстрый ввод без формата:
+    - "50000"  -> расход на эту сумму
+    - "+50000" -> приход на эту сумму
+    Возвращает data-словарь как parse_command, либо None, если это не число.
+    """
+    stripped = text.strip()
+
+    if stripped.startswith("+"):
+        digits = stripped[1:].replace(" ", "")
+        if digits.isdigit():
+            return {"приход": digits}
+        return None
+
+    digits = stripped.replace(" ", "")
+    if digits.isdigit():
+        return {"расход": digits}
+    return None
 
 
 def parse_command(text: str):
@@ -106,12 +128,12 @@ def write_row(ws, row: int, mode: str, start_col: int, values: list):
 
 
 def handle_expense_message(text: str) -> str:
-    data = parse_command(text)
+    data = parse_quick_amount(text) or parse_command(text)
     today = datetime.now().strftime("%d.%m.%Y")
     cmd_type = data.get("type", "")
 
     try:
-        if cmd_type == "катта":
+        if cmd_type == "катта" and data.get("м2") and data.get("фио"):
             date_val = data.get("дата", today)
             m2 = data.get("м2", "")
             fio = data.get("фио", "")
@@ -122,7 +144,7 @@ def handle_expense_message(text: str) -> str:
             sheet_salary.update(f"F{row}", [[fio]])  # F ФИО
             return f"Катта записана (строка {row})"
 
-        elif cmd_type == "палировка":
+        elif cmd_type == "палировка" and data.get("фио") and data.get("м2"):
             fio = data.get("фио", "")
             date_val = data.get("дата", today)
             m2 = data.get("м2", "")
@@ -132,7 +154,7 @@ def handle_expense_message(text: str) -> str:
             write_row(sheet_salary, row, mode, 8, [fio, date_val, m2])  # H,I,J (K,L,M - формулы)
             return f"Палировка записана (строка {row})"
 
-        elif cmd_type == "сырье":
+        elif cmd_type == "сырье" and data.get("описание") and data.get("стоимость"):
             desc = data.get("описание", "")
             cost = data.get("стоимость", "")
             date_val = data.get("дата", today)
@@ -143,7 +165,7 @@ def handle_expense_message(text: str) -> str:
             write_row(sheet_business, row, mode, 1, [desc, cost, date_val, cubes])  # A,B,C,D
             return f"Приход сырья записан (строка {row})"
 
-        elif cmd_type == "свет":
+        elif cmd_type == "свет" and data.get("показание") and data.get("расход") and data.get("тариф"):
             date_val = data.get("дата", today)
             reading = data.get("показание", "")
             usage = data.get("расход", "")
@@ -176,16 +198,12 @@ def handle_expense_message(text: str) -> str:
             write_row(sheet_expenses, row, mode, 5, [name, amount])
             return f"Приход записан (строка {row})"
 
+        elif cmd_type in TYPE_TEMPLATES:
+            # известный тип команды, но без нужных полей - подсказываем точный формат
+            return TYPE_TEMPLATES[cmd_type]
+
         else:
-            return (
-                "Не понял команду. Примеры:\n"
-                "Расход: 50000, Категория: Ужин, Наименование: ужин\n"
-                "Приход: 2000000, Наименование: аванс\n"
-                "Катта, Дата: 09.07.2026, м2: 150, ФИО: Исмат\n"
-                "Палировка, ФИО: Нодир, Дата: 09.07.2026, м2: 400\n"
-                "Сырье, Описание: камень, Стоимость: 15000000, Дата: 09.07.2026, Кубы: 20\n"
-                "Свет, Дата: 09.07.2026, Показание: 12600, Расход: 36, Тариф: 450"
-            )
+            return HELP_TEXT
 
     except Exception as e:
         return f"Ошибка при записи в таблицу: {e}"
