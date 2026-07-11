@@ -140,32 +140,50 @@ def write_expense(amount: str, category: str, name: str = "") -> str:
         return f"Ошибка при записи в таблицу: {e}"
 
 
+def write_rezka(fio: str, date_val: str, m2: str) -> str:
+    date_val = date_val.strip() if date_val and date_val.strip() else datetime.now().strftime("%d.%m.%Y")
+
+    try:
+        sheet_salary = get_worksheet(WS_SALARY)
+        row, mode = find_target_row(sheet_salary, name_col=1, amount_col=2)
+        write_row(sheet_salary, row, mode, 1, [date_val, m2])  # A,B (C,D,E - формулы, не трогаем)
+        sheet_salary.update(f"F{row}", [[fio]])  # F ФИО
+        return f"Резка записана (строка {row})"
+    except Exception as e:
+        return f"Ошибка при записи в таблицу: {e}"
+
+
+def write_palirovka(fio: str, date_val: str, m2: str) -> str:
+    date_val = date_val.strip() if date_val and date_val.strip() else datetime.now().strftime("%d.%m.%Y")
+
+    try:
+        sheet_salary = get_worksheet(WS_SALARY)
+        row, mode = find_target_row_by_formula(sheet_salary, check_col=10)
+        write_row(sheet_salary, row, mode, 8, [fio, date_val, m2])  # H,I,J (K,L,M - формулы)
+        return f"Палировка записана (строка {row})"
+    except Exception as e:
+        return f"Ошибка при записи в таблицу: {e}"
+
+
 def handle_expense_message(text: str) -> str:
     data = parse_quick_amount(text) or parse_command(text)
     today = datetime.now().strftime("%d.%m.%Y")
     cmd_type = data.get("type", "")
+    if cmd_type == "катта":  # старое название команды, оставлено для совместимости
+        cmd_type = "резка"
 
     try:
-        if cmd_type == "катта" and data.get("м2") and data.get("фио"):
+        if cmd_type == "резка" and data.get("м2") and data.get("фио"):
             date_val = data.get("дата", today)
             m2 = data.get("м2", "")
             fio = data.get("фио", "")
-
-            sheet_salary = get_worksheet(WS_SALARY)
-            row, mode = find_target_row(sheet_salary, name_col=1, amount_col=2)
-            write_row(sheet_salary, row, mode, 1, [date_val, m2])  # A,B (C,D,E - формулы, не трогаем)
-            sheet_salary.update(f"F{row}", [[fio]])  # F ФИО
-            return f"Катта записана (строка {row})"
+            return write_rezka(fio, date_val, m2)
 
         elif cmd_type == "палировка" and data.get("фио") and data.get("м2"):
             fio = data.get("фио", "")
             date_val = data.get("дата", today)
             m2 = data.get("м2", "")
-
-            sheet_salary = get_worksheet(WS_SALARY)
-            row, mode = find_target_row_by_formula(sheet_salary, check_col=10)
-            write_row(sheet_salary, row, mode, 8, [fio, date_val, m2])  # H,I,J (K,L,M - формулы)
-            return f"Палировка записана (строка {row})"
+            return write_palirovka(fio, date_val, m2)
 
         elif cmd_type == "сырье" and data.get("описание") and data.get("стоимость"):
             desc = data.get("описание", "")

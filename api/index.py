@@ -1,14 +1,27 @@
 from flask import Flask, jsonify, request
 
 from lib.config import CRON_SECRET, TELEGRAM_CHAT_ID
-from lib.menu import CATEGORY_KEYBOARD, CATEGORY_PROMPT_LABEL, MAIN_KEYBOARD, WELCOME_TEXT, category_prompt
+from lib.menu import (
+    CATEGORY_KEYBOARD,
+    CATEGORY_PROMPT_LABEL,
+    MAIN_KEYBOARD,
+    PALIROVKA_KEYBOARD,
+    PALIROVKA_PROMPT_LABEL,
+    REZKA_KEYBOARD,
+    REZKA_PROMPT_LABEL,
+    WELCOME_TEXT,
+    category_prompt,
+    palirovka_prompt,
+    rezka_prompt,
+)
 from lib.rates import calculate_cross_rates, format_message, get_exchange_rates
-from lib.sheets import handle_expense_message, write_expense
+from lib.sheets import handle_expense_message, write_expense, write_palirovka, write_rezka
 from lib.telegram import answer_callback_query, send_message
 
 app = Flask(__name__)
 
 GREETING_TRIGGERS = {"/start", "/help", "помощь"}
+REZKA_TRIGGERS = {"резка", "катта"}  # "катта" оставлено для совместимости со старым названием
 
 
 @app.route("/api/webhook", methods=["POST"])
@@ -26,27 +39,72 @@ def webhook():
 
     chat_id = message["chat"]["id"]
     text = message["text"].strip()
+    text_lower = text.lower()
 
-    if text.lower() in GREETING_TRIGGERS:
+    if text_lower in GREETING_TRIGGERS:
         send_message(WELCOME_TEXT, chat_id=chat_id, reply_markup=MAIN_KEYBOARD)
         return jsonify(ok=True)
 
-    if text.lower() == "расход":
+    if text_lower == "расход":
         send_message("Выбери категорию:", chat_id=chat_id, reply_markup=CATEGORY_KEYBOARD)
         return jsonify(ok=True)
 
-    reply_to = message.get("reply_to_message") or {}
-    if reply_to.get("text", "").startswith(CATEGORY_PROMPT_LABEL):
-        category = reply_to["text"].split(CATEGORY_PROMPT_LABEL, 1)[1].splitlines()[0].strip()
+    if text_lower in REZKA_TRIGGERS:
+        send_message("Выбери, кто делал резку:", chat_id=chat_id, reply_markup=REZKA_KEYBOARD)
+        return jsonify(ok=True)
+
+    if text_lower == "палировка":
+        send_message("Выбери, кто делал палировку:", chat_id=chat_id, reply_markup=PALIROVKA_KEYBOARD)
+        return jsonify(ok=True)
+
+    reply_to_text = (message.get("reply_to_message") or {}).get("text", "")
+
+    if reply_to_text.startswith(CATEGORY_PROMPT_LABEL):
+        category = reply_to_text.split(CATEGORY_PROMPT_LABEL, 1)[1].splitlines()[0].strip()
         amount, _, name = text.partition(",")
         reply = write_expense(amount.strip(), category, name.strip())
-        send_message(reply, chat_id=chat_id)
+        send_message(reply, chat_id=chat_id, reply_markup=MAIN_KEYBOARD)
+        return jsonify(ok=True)
+
+    if reply_to_text.startswith(REZKA_PROMPT_LABEL):
+        fio = reply_to_text.split(REZKA_PROMPT_LABEL, 1)[1].splitlines()[0].strip()
+        reply = _finish_worker_entry(write_rezka, fio, text)
+        send_message(reply, chat_id=chat_id, reply_markup=MAIN_KEYBOARD)
+        return jsonify(ok=True)
+
+    if reply_to_text.startswith(PALIROVKA_PROMPT_LABEL):
+        fio = reply_to_text.split(PALIROVKA_PROMPT_LABEL, 1)[1].splitlines()[0].strip()
+        reply = _finish_worker_entry(write_palirovka, fio, text)
+        send_message(reply, chat_id=chat_id, reply_markup=MAIN_KEYBOARD)
         return jsonify(ok=True)
 
     reply = handle_expense_message(text)
     send_message(reply, chat_id=chat_id)
 
     return jsonify(ok=True)
+
+
+def _finish_worker_entry(write_fn, fio: str, text: str) -> str:
+    """
+    Достраивает запись Резки/Палировки после того, как ФИО уже выбрано кнопкой.
+    Если ФИО было "Другое" - ждём "ФИО, Дата, м2" (или "ФИО, м2").
+    Иначе ждём "Дата, м2" (или просто "м2").
+    """
+    parts = [p.strip() for p in text.split(",")]
+
+    if fio == "Другое":
+        if len(parts) >= 3:
+            fio, date_val, m2 = parts[0], parts[1], parts[2]
+        elif len(parts) == 2:
+            fio, date_val, m2 = parts[0], "", parts[1]
+        else:
+            return "Нужно ФИО и м2 через запятую, например: Расим, 150"
+    elif len(parts) >= 2:
+        date_val, m2 = parts[0], parts[1]
+    else:
+        date_val, m2 = "", parts[0]
+
+    return write_fn(fio, date_val, m2)
 
 
 def handle_callback(callback):
@@ -57,6 +115,16 @@ def handle_callback(callback):
         category = data[len("cat:"):]
         answer_callback_query(callback["id"])
         send_message(category_prompt(category), chat_id=chat_id, reply_markup={"force_reply": True})
+
+    elif data.startswith("rezka:"):
+        fio = data[len("rezka:"):]
+        answer_callback_query(callback["id"])
+        send_message(rezka_prompt(fio), chat_id=chat_id, reply_markup={"force_reply": True})
+
+    elif data.startswith("pal:"):
+        fio = data[len("pal:"):]
+        answer_callback_query(callback["id"])
+        send_message(palirovka_prompt(fio), chat_id=chat_id, reply_markup={"force_reply": True})
 
     return jsonify(ok=True)
 

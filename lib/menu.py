@@ -1,7 +1,7 @@
 MAIN_KEYBOARD = {
     "keyboard": [
         ["Расход", "Приход"],
-        ["Катта", "Палировка"],
+        ["Резка", "Палировка"],
         ["Сырье", "Свет"],
         ["Помощь"],
     ],
@@ -17,12 +17,15 @@ EXPENSE_CATEGORIES = [
     "Другое",
 ]
 
+# ФИО рабочих для Резки и Палировки (общий список, редактируется по запросу)
+FIO_LIST = ["Нодир", "Исмат", "Шахоб", "Фазлиддин", "Зафар", "Курбон", "Вали", "Другое"]
 
-def _category_keyboard():
+
+def _keyboard(items, callback_prefix, per_row=2):
     rows, row = [], []
-    for cat in EXPENSE_CATEGORIES:
-        row.append({"text": cat, "callback_data": f"cat:{cat}"})
-        if len(row) == 2:
+    for item in items:
+        row.append({"text": item, "callback_data": f"{callback_prefix}:{item}"})
+        if len(row) == per_row:
             rows.append(row)
             row = []
     if row:
@@ -30,9 +33,13 @@ def _category_keyboard():
     return {"inline_keyboard": rows}
 
 
-CATEGORY_KEYBOARD = _category_keyboard()
+CATEGORY_KEYBOARD = _keyboard(EXPENSE_CATEGORIES, "cat", per_row=2)
+REZKA_KEYBOARD = _keyboard(FIO_LIST, "rezka", per_row=3)
+PALIROVKA_KEYBOARD = _keyboard(FIO_LIST, "pal", per_row=3)
 
 CATEGORY_PROMPT_LABEL = "Категория:"
+REZKA_PROMPT_LABEL = "Резка — ФИО:"
+PALIROVKA_PROMPT_LABEL = "Палировка — ФИО:"
 
 
 def category_prompt(category: str) -> str:
@@ -41,6 +48,35 @@ def category_prompt(category: str) -> str:
         "Теперь ответь на это сообщение суммой (и через запятую — наименованием).\n"
         "Например: 50000, ужин с семьёй"
     )
+
+
+def rezka_prompt(fio: str) -> str:
+    if fio == "Другое":
+        return (
+            f"{REZKA_PROMPT_LABEL} Другое\n"
+            "Напиши ответом ФИО, дату и м2 через запятую.\n"
+            "Например: Расим, 09.07.2026, 150"
+        )
+    return (
+        f"{REZKA_PROMPT_LABEL} {fio}\n"
+        "Теперь ответь на это сообщение датой и м2 через запятую (дату можно пропустить — будет сегодня).\n"
+        "Например: 09.07.2026, 150  или просто  150"
+    )
+
+
+def palirovka_prompt(fio: str) -> str:
+    if fio == "Другое":
+        return (
+            f"{PALIROVKA_PROMPT_LABEL} Другое\n"
+            "Напиши ответом ФИО, дату и м2 через запятую.\n"
+            "Например: Расим, 09.07.2026, 400"
+        )
+    return (
+        f"{PALIROVKA_PROMPT_LABEL} {fio}\n"
+        "Теперь ответь на это сообщение датой и м2 через запятую (дату можно пропустить — будет сегодня).\n"
+        "Например: 09.07.2026, 400  или просто  400"
+    )
+
 
 WELCOME_TEXT = (
     "Привет! Я записываю расходы/приходы завода в Google Таблицу.\n\n"
@@ -65,11 +101,11 @@ TYPE_TEMPLATES = {
         "Приход: 2000000, Наименование: аванс от Жамшида\n\n"
         "Или быстро — отправь число со знаком плюс: +2000000"
     ),
-    "катта": (
+    "резка": (
         "Формат:\n"
-        "Катта, Дата: <дата>, м2: <число>, ФИО: <имя>\n\n"
+        "Резка, Дата: <дата>, м2: <число>, ФИО: <имя>\n\n"
         "Например:\n"
-        "Катта, Дата: 09.07.2026, м2: 150, ФИО: Исмат"
+        "Резка, Дата: 09.07.2026, м2: 150, ФИО: Исмат"
     ),
     "палировка": (
         "Формат:\n"
@@ -95,7 +131,7 @@ HELP_TEXT = (
     "Не понял команду. Примеры:\n"
     "Расход: 50000, Категория: Ужин, Наименование: ужин\n"
     "Приход: 2000000, Наименование: аванс\n"
-    "Катта, Дата: 09.07.2026, м2: 150, ФИО: Исмат\n"
+    "Резка, Дата: 09.07.2026, м2: 150, ФИО: Исмат\n"
     "Палировка, ФИО: Нодир, Дата: 09.07.2026, м2: 400\n"
     "Сырье, Описание: камень, Стоимость: 15000000, Дата: 09.07.2026, Кубы: 20\n"
     "Свет, Дата: 09.07.2026, Показание: 12600, Расход: 36, Тариф: 450\n\n"
