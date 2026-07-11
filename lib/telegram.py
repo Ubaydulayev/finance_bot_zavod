@@ -14,3 +14,14 @@ def send_message(text: str, chat_id, parse_mode: str = None, reply_markup: dict 
     response = requests.post(url, json=payload, timeout=10)
     response.raise_for_status()
     return True
+
+
+def answer_callback_query(callback_query_id: str, text: str = None) -> bool:
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/answerCallbackQuery"
+    payload = {"callback_query_id": callback_query_id}
+    if text:
+        payload["text"] = text
+
+    response = requests.post(url, json=payload, timeout=10)
+    response.raise_for_status()
+    return True

@@ -127,6 +127,19 @@ def write_row(ws, row: int, mode: str, start_col: int, values: list):
         ws.update(rng, [values])
 
 
+def write_expense(amount: str, category: str, name: str = "") -> str:
+    category = category.strip() if category and category.strip() else "Другое"
+    today = datetime.now().strftime("%d.%m.%Y")
+
+    try:
+        sheet_expenses = get_worksheet(WS_EXPENSES)
+        row, mode = find_target_row(sheet_expenses, name_col=1, amount_col=2)
+        write_row(sheet_expenses, row, mode, 1, [name, amount, today, category])
+        return f"Расход записан (строка {row})"
+    except Exception as e:
+        return f"Ошибка при записи в таблицу: {e}"
+
+
 def handle_expense_message(text: str) -> str:
     data = parse_quick_amount(text) or parse_command(text)
     today = datetime.now().strftime("%d.%m.%Y")
@@ -185,10 +198,7 @@ def handle_expense_message(text: str) -> str:
             amount = data["расход"]
             category = data.get("категория", "")
             name = data.get("наименование", "")
-            sheet_expenses = get_worksheet(WS_EXPENSES)
-            row, mode = find_target_row(sheet_expenses, name_col=1, amount_col=2)
-            write_row(sheet_expenses, row, mode, 1, [name, amount, today, category])
-            return f"Расход записан (строка {row})"
+            return write_expense(amount, category, name)
 
         elif "приход" in data:
             amount = data["приход"]

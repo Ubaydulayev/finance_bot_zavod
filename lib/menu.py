@@ -8,6 +8,40 @@ MAIN_KEYBOARD = {
     "resize_keyboard": True,
 }
 
+# Реальные категории расходов из таблицы "Личные Расходы" + "Другое"
+EXPENSE_CATEGORIES = [
+    "Завтрак", "Обед", "Ужин", "Питание",
+    "Такси", "Пропан", "Салярка кара учун",
+    "Сегмент", "Шарожка", "Йолкира блок",
+    "Сырье", "Ойлик",
+    "Другое",
+]
+
+
+def _category_keyboard():
+    rows, row = [], []
+    for cat in EXPENSE_CATEGORIES:
+        row.append({"text": cat, "callback_data": f"cat:{cat}"})
+        if len(row) == 2:
+            rows.append(row)
+            row = []
+    if row:
+        rows.append(row)
+    return {"inline_keyboard": rows}
+
+
+CATEGORY_KEYBOARD = _category_keyboard()
+
+CATEGORY_PROMPT_LABEL = "Категория:"
+
+
+def category_prompt(category: str) -> str:
+    return (
+        f"{CATEGORY_PROMPT_LABEL} {category}\n"
+        "Теперь ответь на это сообщение суммой (и через запятую — наименованием).\n"
+        "Например: 50000, ужин с семьёй"
+    )
+
 WELCOME_TEXT = (
     "Привет! Я записываю расходы/приходы завода в Google Таблицу.\n\n"
     "Быстрый способ:\n"
