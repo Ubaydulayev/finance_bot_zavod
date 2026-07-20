@@ -165,6 +165,18 @@ def write_palirovka(fio: str, date_val: str, m2: str) -> str:
         return f"Ошибка при записи в таблицу: {e}"
 
 
+def write_nakoplenie(amount: str, comment: str = "") -> str:
+    today = datetime.now().strftime("%d.%m.%Y")
+
+    try:
+        sheet_expenses = get_worksheet(WS_EXPENSES)
+        row, mode = find_target_row(sheet_expenses, name_col=7, amount_col=8)
+        write_row(sheet_expenses, row, mode, 7, [comment, amount, today])  # G,H,I
+        return f"Накопление записано (строка {row})"
+    except Exception as e:
+        return f"Ошибка при записи в таблицу: {e}"
+
+
 def handle_expense_message(text: str) -> str:
     data = parse_quick_amount(text) or parse_command(text)
     today = datetime.now().strftime("%d.%m.%Y")

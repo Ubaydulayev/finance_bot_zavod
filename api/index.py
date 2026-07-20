@@ -5,17 +5,19 @@ from lib.menu import (
     CATEGORY_KEYBOARD,
     CATEGORY_PROMPT_LABEL,
     MAIN_KEYBOARD,
+    NAKOPLENIE_PROMPT_LABEL,
     PALIROVKA_KEYBOARD,
     PALIROVKA_PROMPT_LABEL,
     REZKA_KEYBOARD,
     REZKA_PROMPT_LABEL,
     WELCOME_TEXT,
     category_prompt,
+    nakoplenie_prompt,
     palirovka_prompt,
     rezka_prompt,
 )
 from lib.rates import calculate_cross_rates, format_message, get_exchange_rates
-from lib.sheets import handle_expense_message, write_expense, write_palirovka, write_rezka
+from lib.sheets import handle_expense_message, write_expense, write_nakoplenie, write_palirovka, write_rezka
 from lib.telegram import answer_callback_query, send_message
 
 app = Flask(__name__)
@@ -57,6 +59,10 @@ def webhook():
         send_message("Выбери, кто делал палировку:", chat_id=chat_id, reply_markup=PALIROVKA_KEYBOARD)
         return jsonify(ok=True)
 
+    if text_lower == "накопление":
+        send_message(nakoplenie_prompt(), chat_id=chat_id, reply_markup={"force_reply": True})
+        return jsonify(ok=True)
+
     reply_to_text = (message.get("reply_to_message") or {}).get("text", "")
 
     if reply_to_text.startswith(CATEGORY_PROMPT_LABEL):
@@ -75,6 +81,12 @@ def webhook():
     if reply_to_text.startswith(PALIROVKA_PROMPT_LABEL):
         fio = reply_to_text.split(PALIROVKA_PROMPT_LABEL, 1)[1].splitlines()[0].strip()
         reply = _finish_worker_entry(write_palirovka, fio, text)
+        send_message(reply, chat_id=chat_id, reply_markup=MAIN_KEYBOARD)
+        return jsonify(ok=True)
+
+    if reply_to_text.startswith(NAKOPLENIE_PROMPT_LABEL):
+        amount, _, comment = text.partition(",")
+        reply = write_nakoplenie(amount.strip(), comment.strip())
         send_message(reply, chat_id=chat_id, reply_markup=MAIN_KEYBOARD)
         return jsonify(ok=True)
 
