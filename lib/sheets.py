@@ -16,8 +16,7 @@ WHO_COL_INCOME = 11    # K, "Личные Расходы" - Приход
 WHO_COL_NAKOPLENIE = 12  # L, "Личные Расходы" - Накопление
 WHO_COL_SYRE = 15      # O, "Бизнес" - Сырье
 WHO_COL_SVET = 16      # P, "Бизнес" - Свет
-WHO_COL_REZKA = 14     # N, "Болларни Ойлиги Обьем" - Резка
-WHO_COL_PALIROVKA = 15  # O, "Болларни Ойлиги Обьем" - Палировка
+WHO_COL_REZKA = 14     # N, "Болларни Ойлиги Обьем" - Обьем ребят за день
 
 _spreadsheet = None
 _worksheets = {}
@@ -181,19 +180,6 @@ def write_rezka(fio: str, date_val: str, m2: str, who: str = "", lang: str = "ru
         return i18n.t("write_error", lang, error=e)
 
 
-def write_palirovka(fio: str, date_val: str, m2: str, who: str = "", lang: str = "ru") -> str:
-    date_val = date_val.strip() if date_val and date_val.strip() else datetime.now().strftime("%d.%m.%Y")
-
-    try:
-        sheet_salary = get_worksheet(WS_SALARY)
-        row, mode = find_target_row_by_formula(sheet_salary, check_col=10)
-        write_row(sheet_salary, row, mode, 8, [fio, date_val, m2])  # H,I,J (K,L,M - формулы)
-        _write_who(sheet_salary, row, WHO_COL_PALIROVKA, who)
-        return i18n.t("saved_palirovka", lang, row=row)
-    except Exception as e:
-        return i18n.t("write_error", lang, error=e)
-
-
 def write_nakoplenie(amount: str, comment: str = "", who: str = "", lang: str = "ru") -> str:
     today = datetime.now().strftime("%d.%m.%Y")
 
@@ -246,12 +232,6 @@ def handle_expense_message(text: str, who: str = "", lang: str = "ru") -> str:
         m2 = data.get("м2", "")
         fio = data.get("фио", "")
         return write_rezka(fio, date_val, m2, who=who, lang=lang)
-
-    elif cmd_type == "палировка" and data.get("фио") and data.get("м2"):
-        fio = data.get("фио", "")
-        date_val = data.get("дата", today)
-        m2 = data.get("м2", "")
-        return write_palirovka(fio, date_val, m2, who=who, lang=lang)
 
     elif cmd_type == "сырье" and data.get("описание") and data.get("стоимость"):
         desc = data.get("описание", "")

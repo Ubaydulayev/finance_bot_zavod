@@ -2,9 +2,9 @@ from flask import Flask, jsonify, request
 
 from lib import i18n, users
 from lib.config import CRON_SECRET, TELEGRAM_CHAT_ID
-from lib.menu import CATEGORY_KEYBOARD, PALIROVKA_KEYBOARD, REZKA_KEYBOARD, category_prompt, nakoplenie_prompt, palirovka_prompt, rezka_prompt
+from lib.menu import CATEGORY_KEYBOARD, REZKA_KEYBOARD, category_prompt, nakoplenie_prompt, rezka_prompt
 from lib.rates import calculate_cross_rates, format_message, get_exchange_rates
-from lib.sheets import handle_expense_message, write_expense, write_nakoplenie, write_palirovka, write_rezka
+from lib.sheets import handle_expense_message, write_expense, write_nakoplenie, write_rezka
 from lib.telegram import answer_callback_query, send_message
 
 app = Flask(__name__)
@@ -96,10 +96,6 @@ def webhook():
         send_message(i18n.t("rezka_choose", lang), chat_id=chat_id, reply_markup=REZKA_KEYBOARD)
         return jsonify(ok=True)
 
-    if action == "palirovka":
-        send_message(i18n.t("palirovka_choose", lang), chat_id=chat_id, reply_markup=PALIROVKA_KEYBOARD)
-        return jsonify(ok=True)
-
     if action == "nakoplenie":
         send_message(nakoplenie_prompt(lang), chat_id=chat_id, reply_markup={"force_reply": True})
         return jsonify(ok=True)
@@ -124,12 +120,6 @@ def webhook():
         send_message(reply, chat_id=chat_id, reply_markup=i18n.main_keyboard(lang))
         return jsonify(ok=True)
 
-    if prompt_type == "palirovka":
-        fio = reply_to_text.split(label, 1)[1].splitlines()[0].strip()
-        reply = _finish_worker_entry(write_palirovka, fio, text, who, lang)
-        send_message(reply, chat_id=chat_id, reply_markup=i18n.main_keyboard(lang))
-        return jsonify(ok=True)
-
     if prompt_type == "nakoplenie":
         amount, _, comment = text.partition(",")
         reply = write_nakoplenie(amount.strip(), comment.strip(), who=who, lang=lang)
@@ -144,7 +134,7 @@ def webhook():
 
 def _finish_worker_entry(write_fn, fio: str, text: str, who: str, lang: str) -> str:
     """
-    Достраивает запись Резки/Палировки после того, как ФИО уже выбрано кнопкой.
+    Достраивает запись объёма после того, как ФИО уже выбрано кнопкой.
     Если ФИО было "Другое" - ждём "ФИО, Дата, м2" (или "ФИО, м2").
     Иначе ждём "Дата, м2" (или просто "м2").
     """
@@ -203,11 +193,6 @@ def handle_callback(callback):
         fio = data[len("rezka:"):]
         answer_callback_query(callback["id"])
         send_message(rezka_prompt(fio, lang), chat_id=chat_id, reply_markup={"force_reply": True})
-
-    elif data.startswith("pal:"):
-        fio = data[len("pal:"):]
-        answer_callback_query(callback["id"])
-        send_message(palirovka_prompt(fio, lang), chat_id=chat_id, reply_markup={"force_reply": True})
 
     return jsonify(ok=True)
 
