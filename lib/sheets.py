@@ -4,10 +4,20 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 
+from . import i18n
 from .config import GOOGLE_CREDENTIALS_JSON, SPREADSHEET_ID, WS_BUSINESS, WS_EXPENSES, WS_SALARY
-from .menu import HELP_TEXT, TYPE_TEMPLATES
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+# Колонки "Кто внёс" - добавлены в конец каждой таблицы, чтобы не задеть
+# существующие данные/формулы (см. i18n-фичу: язык бота + регистрация).
+WHO_COL_EXPENSE = 10   # J, "Личные Расходы" - Расход
+WHO_COL_INCOME = 11    # K, "Личные Расходы" - Приход
+WHO_COL_NAKOPLENIE = 12  # L, "Личные Расходы" - Накопление
+WHO_COL_SYRE = 15      # O, "Бизнес" - Сырье
+WHO_COL_SVET = 16      # P, "Бизнес" - Свет
+WHO_COL_REZKA = 14     # N, "Болларни Ойлиги Обьем" - Резка
+WHO_COL_PALIROVKA = 15  # O, "Болларни Ойлиги Обьем" - Палировка
 
 _spreadsheet = None
 _worksheets = {}
@@ -127,7 +137,12 @@ def write_row(ws, row: int, mode: str, start_col: int, values: list):
         ws.update(rng, [values])
 
 
-def write_expense(amount: str, category: str, name: str = "") -> str:
+def _write_who(ws, row: int, col: int, who: str):
+    if who:
+        ws.update(f"{col_letter(col)}{row}", [[who]])
+
+
+def write_expense(amount: str, category: str, name: str = "", who: str = "", lang: str = "ru") -> str:
     category = category.strip() if category and category.strip() else "Другое"
     today = datetime.now().strftime("%d.%m.%Y")
 
@@ -135,12 +150,24 @@ def write_expense(amount: str, category: str, name: str = "") -> str:
         sheet_expenses = get_worksheet(WS_EXPENSES)
         row, mode = find_target_row(sheet_expenses, name_col=1, amount_col=2)
         write_row(sheet_expenses, row, mode, 1, [name, amount, today, category])
-        return f"Расход записан (строка {row})"
+        _write_who(sheet_expenses, row, WHO_COL_EXPENSE, who)
+        return i18n.t("saved_expense", lang, row=row)
     except Exception as e:
-        return f"Ошибка при записи в таблицу: {e}"
+        return i18n.t("write_error", lang, error=e)
 
 
-def write_rezka(fio: str, date_val: str, m2: str) -> str:
+def write_income(amount: str, name: str = "", who: str = "", lang: str = "ru") -> str:
+    try:
+        sheet_expenses = get_worksheet(WS_EXPENSES)
+        row, mode = find_target_row(sheet_expenses, name_col=5, amount_col=6)
+        write_row(sheet_expenses, row, mode, 5, [name, amount])
+        _write_who(sheet_expenses, row, WHO_COL_INCOME, who)
+        return i18n.t("saved_income", lang, row=row)
+    except Exception as e:
+        return i18n.t("write_error", lang, error=e)
+
+
+def write_rezka(fio: str, date_val: str, m2: str, who: str = "", lang: str = "ru") -> str:
     date_val = date_val.strip() if date_val and date_val.strip() else datetime.now().strftime("%d.%m.%Y")
 
     try:
@@ -148,102 +175,112 @@ def write_rezka(fio: str, date_val: str, m2: str) -> str:
         row, mode = find_target_row(sheet_salary, name_col=1, amount_col=2)
         write_row(sheet_salary, row, mode, 1, [date_val, m2])  # A,B (C,D,E - формулы, не трогаем)
         sheet_salary.update(f"F{row}", [[fio]])  # F ФИО
-        return f"Резка записана (строка {row})"
+        _write_who(sheet_salary, row, WHO_COL_REZKA, who)
+        return i18n.t("saved_rezka", lang, row=row)
     except Exception as e:
-        return f"Ошибка при записи в таблицу: {e}"
+        return i18n.t("write_error", lang, error=e)
 
 
-def write_palirovka(fio: str, date_val: str, m2: str) -> str:
+def write_palirovka(fio: str, date_val: str, m2: str, who: str = "", lang: str = "ru") -> str:
     date_val = date_val.strip() if date_val and date_val.strip() else datetime.now().strftime("%d.%m.%Y")
 
     try:
         sheet_salary = get_worksheet(WS_SALARY)
         row, mode = find_target_row_by_formula(sheet_salary, check_col=10)
         write_row(sheet_salary, row, mode, 8, [fio, date_val, m2])  # H,I,J (K,L,M - формулы)
-        return f"Палировка записана (строка {row})"
+        _write_who(sheet_salary, row, WHO_COL_PALIROVKA, who)
+        return i18n.t("saved_palirovka", lang, row=row)
     except Exception as e:
-        return f"Ошибка при записи в таблицу: {e}"
+        return i18n.t("write_error", lang, error=e)
 
 
-def write_nakoplenie(amount: str, comment: str = "") -> str:
+def write_nakoplenie(amount: str, comment: str = "", who: str = "", lang: str = "ru") -> str:
     today = datetime.now().strftime("%d.%m.%Y")
 
     try:
         sheet_expenses = get_worksheet(WS_EXPENSES)
         row, mode = find_target_row(sheet_expenses, name_col=7, amount_col=8)
         write_row(sheet_expenses, row, mode, 7, [comment, amount, today])  # G,H,I
-        return f"Накопление записано (строка {row})"
+        _write_who(sheet_expenses, row, WHO_COL_NAKOPLENIE, who)
+        return i18n.t("saved_nakoplenie", lang, row=row)
     except Exception as e:
-        return f"Ошибка при записи в таблицу: {e}"
+        return i18n.t("write_error", lang, error=e)
 
 
-def handle_expense_message(text: str) -> str:
+def write_syre(desc: str, cost: str, date_val: str, cubes: str, who: str = "", lang: str = "ru") -> str:
+    try:
+        sheet_business = get_worksheet(WS_BUSINESS)
+        row, mode = find_target_row(sheet_business, name_col=1, amount_col=2)
+        write_row(sheet_business, row, mode, 1, [desc, cost, date_val, cubes])  # A,B,C,D
+        _write_who(sheet_business, row, WHO_COL_SYRE, who)
+        return i18n.t("saved_syre", lang, row=row)
+    except Exception as e:
+        return i18n.t("write_error", lang, error=e)
+
+
+def write_svet(date_val: str, reading: str, usage: str, tariff: str, who: str = "", lang: str = "ru") -> str:
+    try:
+        cost = float(usage) * float(tariff)
+    except ValueError:
+        cost = ""
+
+    try:
+        sheet_business = get_worksheet(WS_BUSINESS)
+        row, mode = find_target_row_by_formula(sheet_business, check_col=11)
+        write_row(sheet_business, row, mode, 10, [date_val, reading, usage, tariff, cost])
+        _write_who(sheet_business, row, WHO_COL_SVET, who)
+        return i18n.t("saved_svet", lang, row=row)
+    except Exception as e:
+        return i18n.t("write_error", lang, error=e)
+
+
+def handle_expense_message(text: str, who: str = "", lang: str = "ru") -> str:
     data = parse_quick_amount(text) or parse_command(text)
     today = datetime.now().strftime("%d.%m.%Y")
     cmd_type = data.get("type", "")
     if cmd_type == "катта":  # старое название команды, оставлено для совместимости
         cmd_type = "резка"
 
-    try:
-        if cmd_type == "резка" and data.get("м2") and data.get("фио"):
-            date_val = data.get("дата", today)
-            m2 = data.get("м2", "")
-            fio = data.get("фио", "")
-            return write_rezka(fio, date_val, m2)
+    if cmd_type == "резка" and data.get("м2") and data.get("фио"):
+        date_val = data.get("дата", today)
+        m2 = data.get("м2", "")
+        fio = data.get("фио", "")
+        return write_rezka(fio, date_val, m2, who=who, lang=lang)
 
-        elif cmd_type == "палировка" and data.get("фио") and data.get("м2"):
-            fio = data.get("фио", "")
-            date_val = data.get("дата", today)
-            m2 = data.get("м2", "")
-            return write_palirovka(fio, date_val, m2)
+    elif cmd_type == "палировка" and data.get("фио") and data.get("м2"):
+        fio = data.get("фио", "")
+        date_val = data.get("дата", today)
+        m2 = data.get("м2", "")
+        return write_palirovka(fio, date_val, m2, who=who, lang=lang)
 
-        elif cmd_type == "сырье" and data.get("описание") and data.get("стоимость"):
-            desc = data.get("описание", "")
-            cost = data.get("стоимость", "")
-            date_val = data.get("дата", today)
-            cubes = data.get("кубы", "")
+    elif cmd_type == "сырье" and data.get("описание") and data.get("стоимость"):
+        desc = data.get("описание", "")
+        cost = data.get("стоимость", "")
+        date_val = data.get("дата", today)
+        cubes = data.get("кубы", "")
+        return write_syre(desc, cost, date_val, cubes, who=who, lang=lang)
 
-            sheet_business = get_worksheet(WS_BUSINESS)
-            row, mode = find_target_row(sheet_business, name_col=1, amount_col=2)
-            write_row(sheet_business, row, mode, 1, [desc, cost, date_val, cubes])  # A,B,C,D
-            return f"Приход сырья записан (строка {row})"
+    elif cmd_type == "свет" and data.get("показание") and data.get("расход") and data.get("тариф"):
+        date_val = data.get("дата", today)
+        reading = data.get("показание", "")
+        usage = data.get("расход", "")
+        tariff = data.get("тариф", "")
+        return write_svet(date_val, reading, usage, tariff, who=who, lang=lang)
 
-        elif cmd_type == "свет" and data.get("показание") and data.get("расход") and data.get("тариф"):
-            date_val = data.get("дата", today)
-            reading = data.get("показание", "")
-            usage = data.get("расход", "")
-            tariff = data.get("тариф", "")
+    elif "расход" in data:
+        amount = data["расход"]
+        category = data.get("категория", "")
+        name = data.get("наименование", "")
+        return write_expense(amount, category, name, who=who, lang=lang)
 
-            try:
-                cost = float(usage) * float(tariff)
-            except ValueError:
-                cost = ""
+    elif "приход" in data:
+        amount = data["приход"]
+        name = data.get("наименование", "")
+        return write_income(amount, name, who=who, lang=lang)
 
-            sheet_business = get_worksheet(WS_BUSINESS)
-            row, mode = find_target_row_by_formula(sheet_business, check_col=11)
-            write_row(sheet_business, row, mode, 10, [date_val, reading, usage, tariff, cost])
-            return f"Расход света записан (строка {row})"
+    elif cmd_type in i18n.TYPE_TEMPLATES:
+        # известный тип команды, но без нужных полей - подсказываем точный формат
+        return i18n.type_template(cmd_type, lang)
 
-        elif "расход" in data:
-            amount = data["расход"]
-            category = data.get("категория", "")
-            name = data.get("наименование", "")
-            return write_expense(amount, category, name)
-
-        elif "приход" in data:
-            amount = data["приход"]
-            name = data.get("наименование", "")
-            sheet_expenses = get_worksheet(WS_EXPENSES)
-            row, mode = find_target_row(sheet_expenses, name_col=5, amount_col=6)
-            write_row(sheet_expenses, row, mode, 5, [name, amount])
-            return f"Приход записан (строка {row})"
-
-        elif cmd_type in TYPE_TEMPLATES:
-            # известный тип команды, но без нужных полей - подсказываем точный формат
-            return TYPE_TEMPLATES[cmd_type]
-
-        else:
-            return HELP_TEXT
-
-    except Exception as e:
-        return f"Ошибка при записи в таблицу: {e}"
+    else:
+        return i18n.t("help", lang)
