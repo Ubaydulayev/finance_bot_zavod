@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 
 from lib import i18n, users
-from lib.config import CRON_SECRET, TELEGRAM_CHAT_ID
+from lib.config import CRON_SECRET
 from lib.menu import CATEGORY_KEYBOARD, REZKA_KEYBOARD, category_prompt, nakoplenie_prompt, rezka_prompt
 from lib.rates import calculate_cross_rates, format_message, get_exchange_rates
 from lib.sheets import handle_expense_message, write_expense, write_nakoplenie, write_rezka
@@ -211,6 +211,12 @@ def cron_rates():
     cross_rates = calculate_cross_rates(rates["USD_UZS"], rates["USD_RUB"], rates["USD_EUR"])
     message = format_message(rates, timestamp, cross_rates)
 
-    send_message(message, chat_id=TELEGRAM_CHAT_ID, parse_mode="Markdown")
+    sent, failed = 0, 0
+    for u in users.list_users():
+        try:
+            send_message(message, chat_id=u["chat_id"], parse_mode="Markdown")
+            sent += 1
+        except Exception:
+            failed += 1
 
-    return jsonify(ok=True)
+    return jsonify(ok=True, sent=sent, failed=failed)

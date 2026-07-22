@@ -54,6 +54,12 @@ def is_fully_registered(user: dict | None) -> bool:
     return bool(user and user.get("name") and user.get("phone") and user.get("lang"))
 
 
+def list_users() -> list:
+    ws = get_users_ws()
+    rows = ws.get_all_values()[1:]
+    return [_row_to_user(i, row) for i, row in enumerate(rows, start=2) if row and row[0]]
+
+
 def create_user_with_lang(chat_id, lang: str) -> dict:
     ws = get_users_ws()
     today = datetime.now().strftime("%d.%m.%Y")
