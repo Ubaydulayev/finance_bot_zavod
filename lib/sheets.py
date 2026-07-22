@@ -59,6 +59,17 @@ def parse_quick_amount(text: str):
     return None
 
 
+def parse_positional(text: str, n: int):
+    """
+    'Тип, з1, з2, ...' -> список из n значений (пустая строка, если не хватает).
+    Для команд без подписей Ключ: Значение (Сырье, Свет).
+    """
+    parts = [p.strip() for p in text.split(",")]
+    values = parts[1:1 + n]
+    values += [""] * (n - len(values))
+    return values
+
+
 def parse_command(text: str):
     parts = [p.strip() for p in text.split(",")]
     data = {}
@@ -221,8 +232,24 @@ def write_svet(date_val: str, reading: str, usage: str, tariff: str, who: str = 
 
 
 def handle_expense_message(text: str, who: str = "", lang: str = "ru") -> str:
-    data = parse_quick_amount(text) or parse_command(text)
     today = datetime.now().strftime("%d.%m.%Y")
+    first_word = text.split(",", 1)[0].strip().lower()
+
+    # Сырье и Свет вводятся без подписей Ключ: Значение - просто значения по
+    # порядку через запятую (Дату можно оставить пустой - подставится сегодня).
+    if first_word == "сырье":
+        desc, cost, date_val, cubes = parse_positional(text, 4)
+        if desc and cost:
+            return write_syre(desc, cost, date_val or today, cubes, who=who, lang=lang)
+        return i18n.type_template("сырье", lang)
+
+    if first_word == "свет":
+        date_val, reading, usage, tariff = parse_positional(text, 4)
+        if reading and usage and tariff:
+            return write_svet(date_val or today, reading, usage, tariff, who=who, lang=lang)
+        return i18n.type_template("свет", lang)
+
+    data = parse_quick_amount(text) or parse_command(text)
     cmd_type = data.get("type", "")
     if cmd_type == "катта":  # старое название команды, оставлено для совместимости
         cmd_type = "резка"
@@ -232,20 +259,6 @@ def handle_expense_message(text: str, who: str = "", lang: str = "ru") -> str:
         m2 = data.get("м2", "")
         fio = data.get("фио", "")
         return write_rezka(fio, date_val, m2, who=who, lang=lang)
-
-    elif cmd_type == "сырье" and data.get("описание") and data.get("стоимость"):
-        desc = data.get("описание", "")
-        cost = data.get("стоимость", "")
-        date_val = data.get("дата", today)
-        cubes = data.get("кубы", "")
-        return write_syre(desc, cost, date_val, cubes, who=who, lang=lang)
-
-    elif cmd_type == "свет" and data.get("показание") and data.get("расход") and data.get("тариф"):
-        date_val = data.get("дата", today)
-        reading = data.get("показание", "")
-        usage = data.get("расход", "")
-        tariff = data.get("тариф", "")
-        return write_svet(date_val, reading, usage, tariff, who=who, lang=lang)
 
     elif "расход" in data:
         amount = data["расход"]
