@@ -2,9 +2,9 @@ from flask import Flask, jsonify, request
 
 from lib import i18n, users
 from lib.config import CRON_SECRET
-from lib.menu import CATEGORY_KEYBOARD, REZKA_KEYBOARD, category_prompt, nakoplenie_prompt, rezka_prompt
+from lib.menu import CATEGORY_KEYBOARD, REPORT_KEYBOARD, REZKA_KEYBOARD, category_prompt, nakoplenie_prompt, rezka_prompt
 from lib.rates import calculate_cross_rates, format_message, get_exchange_rates
-from lib.sheets import handle_expense_message, write_expense, write_nakoplenie, write_rezka
+from lib.sheets import get_report, handle_expense_message, write_expense, write_nakoplenie, write_rezka
 from lib.telegram import answer_callback_query, send_message
 
 app = Flask(__name__)
@@ -100,6 +100,10 @@ def webhook():
         send_message(nakoplenie_prompt(lang), chat_id=chat_id, reply_markup={"force_reply": True})
         return jsonify(ok=True)
 
+    if action == "report":
+        send_message(i18n.t("report_choose", lang), chat_id=chat_id, reply_markup=REPORT_KEYBOARD)
+        return jsonify(ok=True)
+
     if action in ACTION_TO_TEMPLATE_KEY:
         send_message(i18n.type_template(ACTION_TO_TEMPLATE_KEY[action], lang), chat_id=chat_id)
         return jsonify(ok=True)
@@ -193,6 +197,12 @@ def handle_callback(callback):
         fio = data[len("rezka:"):]
         answer_callback_query(callback["id"])
         send_message(rezka_prompt(fio, lang), chat_id=chat_id, reply_markup={"force_reply": True})
+
+    elif data.startswith("rep:"):
+        key = data[len("rep:"):]
+        answer_callback_query(callback["id"])
+        reply = get_report(key, lang)
+        send_message(reply, chat_id=chat_id, reply_markup=i18n.main_keyboard(lang))
 
     return jsonify(ok=True)
 

@@ -15,12 +15,12 @@ MAIN_BUTTONS = {
     "ru": {
         "expense": "Расход", "income": "Приход", "rezka": "Обьем ребят за день",
         "syre": "Сырье", "svet": "Свет", "nakoplenie": "Накопление",
-        "help": "Помощь", "language": "🌐 Язык",
+        "report": "Отчёт", "help": "Помощь", "language": "🌐 Язык",
     },
     "uz": {
         "expense": "Xarajat", "income": "Kirim", "rezka": "Kunlik kesilgan Obyem",
         "syre": "Xomashyo", "svet": "Svet", "nakoplenie": "Jamg'arma",
-        "help": "Yordam", "language": "🌐 Til",
+        "report": "Hisobot", "help": "Yordam", "language": "🌐 Til",
     },
 }
 
@@ -28,7 +28,7 @@ MAIN_LAYOUT = [
     ["expense", "income"],
     ["rezka"],
     ["syre", "svet"],
-    ["nakoplenie"],
+    ["nakoplenie", "report"],
     ["help"],
 ]
 
@@ -128,6 +128,13 @@ _TEXT = {
     },
     "category_choose": {"ru": "Выбери категорию:", "uz": "Kategoriyani tanlang:"},
     "rezka_choose": {"ru": "Выбери, за кого записать объём:", "uz": "Kimning obyemini yozamiz — tanlang:"},
+    "report_choose": {"ru": "Какой отчёт нужен?", "uz": "Qaysi hisobot kerak?"},
+    "report_category": {
+        "ru": "Расход «{category}» за всё время: {sum}",
+        "uz": "«{category}» bo'yicha xarajat: {sum}",
+    },
+    "report_income": {"ru": "Общий приход за всё время: {sum}", "uz": "Umumiy kirim: {sum}"},
+    "report_syre": {"ru": "Приход сырья за всё время: {sum}", "uz": "Umumiy xomashyo kirimi: {sum}"},
     "category_prompt": {
         "ru": "Категория: {category}\nТеперь ответь на это сообщение суммой (и через запятую — наименованием).\nНапример: 50000, ужин с семьёй",
         "uz": "Kategoriya: {category}\nEndi shu xabarga summa bilan javob ber (vergul orqali — nomi).\nMasalan: 50000, oilaviy kechki ovqat",

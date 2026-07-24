@@ -231,6 +231,45 @@ def write_svet(date_val: str, reading: str, usage: str, tariff: str, who: str = 
         return i18n.t("write_error", lang, error=e)
 
 
+def _to_float(val):
+    try:
+        return float(str(val).replace(" ", "").replace(",", ""))
+    except (ValueError, TypeError):
+        return None
+
+
+def _sum_column(ws, col: int, filter_col: int = None, filter_value: str = None) -> float:
+    values = ws.col_values(col)
+    filters = ws.col_values(filter_col) if filter_col else None
+    total = 0.0
+    for i in range(1, len(values)):  # пропускаем строку заголовка
+        if filters is not None:
+            if i >= len(filters) or filters[i].strip() != filter_value:
+                continue
+        n = _to_float(values[i])
+        if n is not None:
+            total += n
+    return total
+
+
+def format_sum(n: float) -> str:
+    return f"{int(round(n)):,}".replace(",", " ") + " сум"
+
+
+def get_report(key: str, lang: str = "ru") -> str:
+    try:
+        if key == "Приход":
+            total = _sum_column(get_worksheet(WS_EXPENSES), col=6)  # F - Приход
+            return i18n.t("report_income", lang, sum=format_sum(total))
+        if key == "Приход сырья":
+            total = _sum_column(get_worksheet(WS_BUSINESS), col=2)  # B - Стоимость
+            return i18n.t("report_syre", lang, sum=format_sum(total))
+        total = _sum_column(get_worksheet(WS_EXPENSES), col=2, filter_col=4, filter_value=key)  # B по D
+        return i18n.t("report_category", lang, category=key, sum=format_sum(total))
+    except Exception as e:
+        return i18n.t("write_error", lang, error=e)
+
+
 def handle_expense_message(text: str, who: str = "", lang: str = "ru") -> str:
     today = datetime.now().strftime("%d.%m.%Y")
     first_word = text.split(",", 1)[0].strip().lower()

@@ -28,6 +28,7 @@ def _keyboard(items, callback_prefix, per_row=2):
 
 CATEGORY_KEYBOARD = _keyboard(EXPENSE_CATEGORIES, "cat", per_row=2)
 REZKA_KEYBOARD = _keyboard(FIO_LIST, "rezka", per_row=3)
+REPORT_KEYBOARD = _keyboard(EXPENSE_CATEGORIES + ["Приход", "Приход сырья"], "rep", per_row=2)
 
 
 def category_prompt(category: str, lang: str) -> str:
