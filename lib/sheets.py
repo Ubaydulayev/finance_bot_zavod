@@ -239,7 +239,9 @@ def _to_float(val):
 
 
 def _sum_column(ws, col: int, filter_col: int = None, filter_value: str = None) -> float:
-    values = ws.col_values(col)
+    # UNFORMATTED_VALUE - иначе суммы приходят как "р.132 880,00" (с валютой
+    # и неразрывными пробелами) и float() не может их разобрать.
+    values = ws.col_values(col, value_render_option="UNFORMATTED_VALUE")
     filters = ws.col_values(filter_col) if filter_col else None
     total = 0.0
     for i in range(1, len(values)):  # пропускаем строку заголовка
