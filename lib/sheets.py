@@ -215,16 +215,21 @@ def write_syre(desc: str, cost: str, date_val: str, cubes: str, who: str = "", l
         return i18n.t("write_error", lang, error=e)
 
 
-def write_svet(date_val: str, reading: str, usage: str, tariff: str, who: str = "", lang: str = "ru") -> str:
+SVET_TARIFF = 1100  # сум за кВт, постоянный тариф
+
+
+def write_svet(reading: str, usage: str, who: str = "", lang: str = "ru") -> str:
+    today = datetime.now().strftime("%d.%m.%Y")
+
     try:
-        cost = float(usage) * float(tariff)
+        cost = float(usage) * SVET_TARIFF
     except ValueError:
         cost = ""
 
     try:
         sheet_business = get_worksheet(WS_BUSINESS)
         row, mode = find_target_row_by_formula(sheet_business, check_col=11)
-        write_row(sheet_business, row, mode, 10, [date_val, reading, usage, tariff, cost])
+        write_row(sheet_business, row, mode, 10, [today, reading, usage, SVET_TARIFF, cost])
         _write_who(sheet_business, row, WHO_COL_SVET, who)
         return i18n.t("saved_svet", lang, row=row)
     except Exception as e:
@@ -285,9 +290,9 @@ def handle_expense_message(text: str, who: str = "", lang: str = "ru") -> str:
         return i18n.type_template("сырье", lang)
 
     if first_word == "свет":
-        date_val, reading, usage, tariff = parse_positional(text, 4)
-        if reading and usage and tariff:
-            return write_svet(date_val or today, reading, usage, tariff, who=who, lang=lang)
+        reading, usage = parse_positional(text, 2)
+        if reading and usage:
+            return write_svet(reading, usage, who=who, lang=lang)
         return i18n.type_template("свет", lang)
 
     data = parse_quick_amount(text) or parse_command(text)
