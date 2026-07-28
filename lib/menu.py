@@ -43,3 +43,7 @@ def rezka_prompt(fio: str, lang: str) -> str:
 
 def nakoplenie_prompt(lang: str) -> str:
     return i18n.t("nakoplenie_prompt", lang)
+
+
+def abdulkosim_prompt(lang: str) -> str:
+    return i18n.t("abdulkosim_prompt", lang)

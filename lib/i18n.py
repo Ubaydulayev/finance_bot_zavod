@@ -15,12 +15,12 @@ MAIN_BUTTONS = {
     "ru": {
         "expense": "Расход", "income": "Приход", "rezka": "Обьем ребят за день",
         "syre": "Сырье", "svet": "Свет", "nakoplenie": "Накопление",
-        "report": "Отчёт", "help": "Помощь", "language": "🌐 Язык",
+        "report": "Отчёт", "abdulkosim": "Абулкосим", "help": "Помощь", "language": "🌐 Язык",
     },
     "uz": {
         "expense": "Xarajat", "income": "Kirim", "rezka": "Kunlik kesilgan Obyem",
         "syre": "Xomashyo", "svet": "Svet", "nakoplenie": "Jamg'arma",
-        "report": "Hisobot", "help": "Yordam", "language": "🌐 Til",
+        "report": "Hisobot", "abdulkosim": "Абулкосим", "help": "Yordam", "language": "🌐 Til",
     },
 }
 
@@ -29,6 +29,7 @@ MAIN_LAYOUT = [
     ["rezka"],
     ["syre", "svet"],
     ["nakoplenie", "report"],
+    ["abdulkosim"],
     ["help"],
 ]
 
@@ -73,6 +74,7 @@ PROMPT_LABELS = {
     "category": {"ru": "Категория:", "uz": "Kategoriya:"},
     "rezka": {"ru": "Обьем — ФИО:", "uz": "Obyem — F.I.Sh:"},
     "nakoplenie": {"ru": "Накопление:", "uz": "Jamg'arma:"},
+    "abdulkosim": {"ru": "Абулкосим:", "uz": "Абулкосим:"},
     "name": ASK_NAME_LABEL,
 }
 
@@ -151,6 +153,10 @@ _TEXT = {
         "ru": "Накопление:\nОтветь на это сообщение суммой и через запятую — комментарием.\nДата проставится сама (сегодняшняя).\nНапример: 500000, аванс за квартиру",
         "uz": "Jamg'arma:\nShu xabarga summa va vergul orqali — izoh bilan javob ber.\nSana o'zi qo'yiladi (bugungi).\nMasalan: 500000, kvartira uchun avans",
     },
+    "abdulkosim_prompt": {
+        "ru": "Абулкосим:\nОтветь на это сообщение наименованием и суммой через запятую (дату можно пропустить — будет сегодня).\nНапример: аванс, 500000  или  аванс, 500000, 09.07.2026",
+        "uz": "Абулкосим:\nShu xabarga nomi va summani vergul bilan yoz (sanani tashlab ketish mumkin — bugungi kun qo'yiladi).\nMasalan: аванс, 500000  yoki  аванс, 500000, 09.07.2026",
+    },
     "help": {
         "ru": (
             "Не понял команду. Примеры:\n"
@@ -180,6 +186,7 @@ _TEXT = {
     "saved_syre": {"ru": "Приход сырья записан (строка {row})", "uz": "Xomashyo kirimi yozildi (qator {row})"},
     "saved_svet": {"ru": "Расход света записан (строка {row})", "uz": "Svet xarajati yozildi (qator {row})"},
     "saved_nakoplenie": {"ru": "Накопление записано (строка {row})", "uz": "Jamg'arma yozildi (qator {row})"},
+    "saved_abdulkosim": {"ru": "Приход Абулкосима записан (строка {row})", "uz": "Abulqosim kirimi yozildi (qator {row})"},
     "write_error": {
         "ru": "Ошибка при записи в таблицу: {error}",
         "uz": "Jadvalga yozishda xatolik: {error}",

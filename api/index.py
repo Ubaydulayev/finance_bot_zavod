@@ -2,9 +2,17 @@ from flask import Flask, jsonify, request
 
 from lib import i18n, users
 from lib.config import CRON_SECRET
-from lib.menu import CATEGORY_KEYBOARD, REPORT_KEYBOARD, REZKA_KEYBOARD, category_prompt, nakoplenie_prompt, rezka_prompt
+from lib.menu import (
+    CATEGORY_KEYBOARD,
+    REPORT_KEYBOARD,
+    REZKA_KEYBOARD,
+    abdulkosim_prompt,
+    category_prompt,
+    nakoplenie_prompt,
+    rezka_prompt,
+)
 from lib.rates import calculate_cross_rates, format_message, get_exchange_rates
-from lib.sheets import get_report, handle_expense_message, write_expense, write_nakoplenie, write_rezka
+from lib.sheets import get_report, handle_expense_message, write_abdulkosim, write_expense, write_nakoplenie, write_rezka
 from lib.telegram import answer_callback_query, send_message
 
 app = Flask(__name__)
@@ -104,6 +112,10 @@ def webhook():
         send_message(i18n.t("report_choose", lang), chat_id=chat_id, reply_markup=REPORT_KEYBOARD)
         return jsonify(ok=True)
 
+    if action == "abdulkosim":
+        send_message(abdulkosim_prompt(lang), chat_id=chat_id, reply_markup={"force_reply": True})
+        return jsonify(ok=True)
+
     if action in ACTION_TO_TEMPLATE_KEY:
         send_message(i18n.type_template(ACTION_TO_TEMPLATE_KEY[action], lang), chat_id=chat_id)
         return jsonify(ok=True)
@@ -127,6 +139,15 @@ def webhook():
     if prompt_type == "nakoplenie":
         amount, _, comment = text.partition(",")
         reply = write_nakoplenie(amount.strip(), comment.strip(), who=who, lang=lang)
+        send_message(reply, chat_id=chat_id, reply_markup=i18n.main_keyboard(lang))
+        return jsonify(ok=True)
+
+    if prompt_type == "abdulkosim":
+        parts = [p.strip() for p in text.split(",")]
+        name = parts[0] if len(parts) > 0 else ""
+        amount = parts[1] if len(parts) > 1 else ""
+        date_val = parts[2] if len(parts) > 2 else ""
+        reply = write_abdulkosim(name, amount, date_val, who=who, lang=lang)
         send_message(reply, chat_id=chat_id, reply_markup=i18n.main_keyboard(lang))
         return jsonify(ok=True)
 

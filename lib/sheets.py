@@ -236,6 +236,18 @@ def write_svet(reading: str, usage: str, who: str = "", lang: str = "ru") -> str
         return i18n.t("write_error", lang, error=e)
 
 
+def write_abdulkosim(name: str, amount: str, date_val: str = "", who: str = "", lang: str = "ru") -> str:
+    date_val = date_val.strip() if date_val and date_val.strip() else datetime.now().strftime("%d.%m.%Y")
+
+    try:
+        sheet_expenses = get_worksheet(WS_EXPENSES)
+        row, mode = find_target_row(sheet_expenses, name_col=14, amount_col=15)
+        write_row(sheet_expenses, row, mode, 14, [name, amount, date_val])  # N,O,P
+        return i18n.t("saved_abdulkosim", lang, row=row)
+    except Exception as e:
+        return i18n.t("write_error", lang, error=e)
+
+
 def _to_float(val):
     try:
         return float(str(val).replace(" ", "").replace(",", ""))
